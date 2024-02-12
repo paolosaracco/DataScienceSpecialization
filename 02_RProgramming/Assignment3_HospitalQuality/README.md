@@ -19,7 +19,7 @@ Scripts for answering the Week 4 Quiz.
   <tr>
     <td>best.R</td>
     <td>The function <code>best()</code> takes two arguments: the 2-character abbreviated name of a state and an
-      outcome name. The function reads the [outcome-of-care-measures.csv](outcome-of-care-measures.csv) file and returns a character vector
+      outcome name. The function reads the <a href="outcome-of-care-measures.csv">outcome-of-care-measures.csv</a> file and returns a character vector
       with the name of the hospital that has the best (i.e. lowest) 30-day mortality for the specied outcome
       in that state. The hospital name is the name provided in the Hospital.Name variable. The outcomes can
       be one of "heart attack", "heart failure", or "pneumonia". Hospitals that do not have data on a particular
@@ -32,7 +32,7 @@ Scripts for answering the Week 4 Quiz.
   <tr>
     <td>rankhospital.R</td><td>The function <code>rankhospital()</code> takes three arguments: the 2-character abbreviated name of a
       state (state), an outcome (outcome), and the ranking of a hospital in that state for that outcome (num).
-      The function reads the [outcome-of-care-measures.csv](outcome-of-care-measures.csv) file and returns a character vector with the name
+      The function reads the <a href="outcome-of-care-measures.csv">outcome-of-care-measures.csv</a> file and returns a character vector with the name
       of the hospital that has the ranking specified by the num argument. 
       For example, the call <code>rankhospital("MD", "heart failure", 5)</code>
       would return a character vector containing the name of the hospital with the 5th lowest 30-day death rate
@@ -47,7 +47,7 @@ Scripts for answering the Week 4 Quiz.
   <tr>
     <td>rankall.R</td>
     <td>The function <code>rankall()</code> takes two arguments: an outcome name (outcome) and a hospital ranking (num). 
-      The function reads the [outcome-of-care-measures.csv](outcome-of-care-measures.csv) file and returns a 2-column data frame
+      The function reads the <a href="outcome-of-care-measures.csv">outcome-of-care-measures.csv</a> file and returns a 2-column data frame
       containing the hospital in each state that has the ranking specied in num. For example the function call
       <code>rankall("heart attack", "best")</code> would return a data frame containing the names of the hospitals that
       are the best in their respective states for 30-day heart attack death rates. The function returns a value
