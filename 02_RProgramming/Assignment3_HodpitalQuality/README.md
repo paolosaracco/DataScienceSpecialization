@@ -4,6 +4,19 @@ Scripts for answering the Week 4 Quiz.
 
 <table>
   <tr>
+    <td>outcome-of-care-measures.csv</td>
+    <td>Contains information about 30-day mortality and readmission rates
+      for heart attacks, heart failure, and pneumonia for over 4,000 hospitals.</td>
+  </tr>
+  <tr>
+    <td>hospital-data.csv</td>
+    <td>Contains information about each hospital.</td>
+  </tr>
+  <tr>
+    <td>Hospital_Revised_Flatfiles.pdf</td>
+    <td>Descriptions of the variables in each le (i.e the code book).</td>
+  </tr>
+  <tr>
     <td>best.R</td>
     <td>The function <code>best()</code> takes two arguments: the 2-character abbreviated name of a state and an
       outcome name. The function reads the [outcome-of-care-measures.csv]() file and returns a character vector
@@ -45,5 +58,9 @@ Scripts for answering the Week 4 Quiz.
       <br><br>
       <strong>Handling ties</strong>. The rankall function handles ties in the 30-day mortality rates in the same way
       that the rankhospital function handles ties.</td>
+  </tr>
+  <tr>
+    <td>rankall_v2.R</td>
+    <td>More elegant version of rankall, by using do.call instead of the for loop.</td>
   </tr>
 </table>
