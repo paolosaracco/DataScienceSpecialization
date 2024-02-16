@@ -10,7 +10,7 @@ This repository stores scripts and files about the second course project for the
 <table>
   <tr>
     <th>File Name</th>
-    <th>Decription</th>
+    <th>Description</th>
   </tr>
 </table>
 
