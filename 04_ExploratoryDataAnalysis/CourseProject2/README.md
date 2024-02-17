@@ -144,3 +144,34 @@ combustion-related sources which would not appear if we would have looked for
 - 2280001010 Marine Vessels, Commercial /Coal /Ocean-going Vessels
 - 2280001020 Marine Vessels, Commercial /Coal /Harbor Vessels
 - 2280001030 Marine Vessels, Commercial /Coal /Fishing Vessels
+
+<h3>plot5.R</h3>
+
+In isolating the variables and observations of interest, a careful check would reveal that searching for "vehicles"
+would miss some SCC codes inherent off-highway vehicles, which appear as 
+
+- Off-highway Vehicle Gasoline
+- 2-Stroke Off-highway Vehicle Gasoline
+- 4-Stroke Off-highway Vehicle Diesel
+
+<h3>plot6.R</h3>
+
+The same care in selecting the observations has to be paid. Moreover, 
+since Los Angeles County is 10 times more populated than Baltimore County, 
+it is not surprising that the levels of emissions are 10 times higher:
+
+```
+   fips year Emissions
+1 06037 1999 6109.6900
+2 06037 2002 7188.6802
+3 06037 2005 7304.1149
+4 06037 2008 6421.0170
+5 24510 1999  403.7700
+6 24510 2002  192.0078
+7 24510 2005  185.4144
+8 24510 2008  138.2402
+```
+
+Therefore, in order to be able to compare the changes over time, I compute
+the level of emissions relative to the 1999 level of emissions, so that
+the scale is now the same for both we can clearly see the evolution over time.
