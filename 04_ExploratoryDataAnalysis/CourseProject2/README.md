@@ -98,3 +98,10 @@ plotting system to make a plot answer this question.
 6. Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
 
 <h1 id=code>R scripts process</h1>
+
+All the R scripts have the same structure.
+
+1. Get the data by downloading and unzipping the folder provided by the assignment.
+2. Read the data and isolate variables and observations of interest.
+3. The plots are generated using either the base plotting system or ggplot2.
+
