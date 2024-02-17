@@ -3,6 +3,8 @@
 This repository stores scripts and files about the second course project for the Exploratory Data Analysis course in the Data Science Specialization offered by JHU on Coursera.
 
 * [Repository content](#content)
+* [Course Project context](#context)
+* [The data](#data)
 * [Assignment](#assignment)
 * [R Scripts Process](#code)
 
@@ -11,7 +13,19 @@ This repository stores scripts and files about the second course project for the
 <table>
   <tr>
     <th>File Name</th>
-    <th>Description</th>
+    <th>Decription</th>
+  </tr>
+  <tr>
+    <td>README.md</td>
+    <td>Documentation explaining the files contained in the repository.</td>
+  </tr>
+  <tr>
+    <td>plot*.R</td>
+    <td>The scripts generating the four plots.</td>
+  </tr>
+  <tr>
+    <td>plot*.png</td>
+    <td>The four plots.</td>
   </tr>
 </table>
 
