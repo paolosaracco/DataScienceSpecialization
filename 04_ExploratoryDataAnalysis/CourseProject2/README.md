@@ -105,3 +105,42 @@ All the R scripts have the same structure.
 2. Read the data and isolate variables and observations of interest.
 3. The plots are generated using either the base plotting system or ggplot2.
 
+There are, however, a few particular features in the scripts for plots from 4 to 6.
+
+<h3>plot4.R</h3>
+
+In isolating the variables and observations of interest, 
+a careful analysis of the data and of the documentation
+reveals that the variable "SCC.Level.Three" is the one
+that allows us to identify whether the PM2.5 is coming
+from coal combustion-related sources, but care needs to
+be used: a search for "coal" and "lignite" correctly returns
+the different kind of coal-related sources, i.e.
+
+- Anthracite Coal
+- Bituminous/Subbituminous Coal
+- Lignite
+- Coal-based Synfuel
+- Waste Coal
+- Gasified Coal
+- Lignite Coal
+- Coal
+- Bituminous Coal
+
+but it also returns some unrelated sources, i.e.
+
+- Coal Bed Methane Natural Gas
+- Charcoal Grilling - Residential (see 23-02-002-xxx for Commercial)
+- Charcoal Manufacturing
+- Coal Mining, Cleaning, and Material Handling (See 305310)
+- Coal Mining, Cleaning, and Material Handling (See 305010)
+
+and we need to get rid of them.
+
+A careful check shows also that this process identifies emissions from coal 
+combustion-related sources which would not appear if we would have looked for
+"Comb" or combustion-related words. For example, the SCCs
+- 2280001000 Marine Vessels, Commercial /Coal /Total, All Vessel Types
+- 2280001010 Marine Vessels, Commercial /Coal /Ocean-going Vessels
+- 2280001020 Marine Vessels, Commercial /Coal /Harbor Vessels
+- 2280001030 Marine Vessels, Commercial /Coal /Fishing Vessels
