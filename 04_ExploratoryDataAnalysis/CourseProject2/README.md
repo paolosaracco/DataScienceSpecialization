@@ -158,7 +158,7 @@ would miss some SCC codes inherent off-highway vehicles, which appear as
 
 The same care in selecting the observations has to be paid. Moreover, 
 since Los Angeles County is 10 times more populated than Baltimore County, 
-it is not surprising that the levels of emissions are 10 times higher:
+it is not surprising that the levels of emissions are more than 10 times higher:
 
 ```
    fips year Emissions
