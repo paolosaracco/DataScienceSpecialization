@@ -1,3 +1,3 @@
-# Exploratory Data Analysis
+# Reproducible Research
 
-Material for the Exploratory Data Analysis course.
+Material for the Reproducible Research course.
