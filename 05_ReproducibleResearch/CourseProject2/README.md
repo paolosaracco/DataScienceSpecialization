@@ -1,6 +1,6 @@
 # Course Project 2
 
-This repository stores scripts and files about the second course project for the Reproducible Research course in the Data Science Specialization offered by JHU on Coursera. Additional details about the project and the data involved can be found in the Markdown file [ImpactWeatherEvents.md](ImpactWeatherEvents.md).
+This repository stores scripts and files about the second course project for the Reproducible Research course in the Data Science Specialization offered by JHU on Coursera. Additional details about the project and the data involved can be found in the Markdown file [ImpactWeatherEvents.md](ImpactWeatherEvents.md). If you are interested in checking the HTML file, please, use [the HTML previewer of GitHub](https://htmlpreview.github.io/).
 
 Following the instructions for the project, the outcome of the project has been published on RPubs as well and can be found at the link: [Impact of severe weather events on population and economy in the US from 1995 to November 2011](https://rpubs.com/paolosaracco/1156499).
 
