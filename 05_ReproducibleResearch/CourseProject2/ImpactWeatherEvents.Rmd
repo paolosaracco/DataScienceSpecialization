@@ -1,0 +1,682 @@
+---
+title: "Impact of severe weather events on population and economy in the US 
+        from 1995 to November 2011"
+author: "Paolo Saracco"
+date: "2024-03-01"
+output:
+        html_document:
+                toc: true
+                toc_depth: 2
+                toc_float: 
+                        collapsed: true
+                number_sections: false
+                keep_md: true
+---
+
+# Synopsis
+
+Based on the NOAA Storm Events Database, we describe and compare the most harmful and costly storms and weather events in the US in the period January 1995 - November 2011. Our leading question is to determine, from historical data, which events have the greatest impact on society and economy. Our analysis leads to observe that even if tornadoes and floods are, in absolute terms, the most harmful and costly events, respectively, on average they are second to hurricanes and heat waves, respectively.
+
+# Data Processing
+
+## Packages
+
+The following packages need to be installed and, possibly, loaded:
+
+```{r packages, message = FALSE}
+autoload("bunzip2", "R.utils")
+autoload("pivot_longer","tidyr")
+autoload("str_replace_all","stringr")
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+```
+
+For the sake of reproducibility, seed is set to 0:
+
+```{r seed}
+set.seed(0)
+```
+
+## Loading data
+
+From the U.S. [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncei.noaa.gov/) we obtained the Storm Events Database, which comes in the form of a comma-separated-value file compressed via the bzip2 algorithm and that can be downloaded from the Coursera course web site: [Storm Event Database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
+
+There is also some documentation of the database available, that can be downloaded from the course web site. Here you will find how some of the variables are constructed/defined:
+
+- National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+
+- National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+First we download the database in the "data" folder:
+
+```{r download}
+if (!dir.exists("data")) {
+        dir.create("data");
+}
+
+if (!file.exists("data/StormData.csv.bz2")) {
+        urlData <- paste("https://d396qusza40orc.cloudfront.net/",
+                         "repdata%2Fdata%2FStormData.csv.bz2",
+                         sep = "");
+        download.file(url = urlData, 
+                      destfile = "data/StormData.csv.bz2");
+}
+
+if (!file.exists("data/StormData.csv")) {
+        bunzip2(filename = "data/StormData.csv.bz2",
+                destname = "data/StormData.csv",
+                skip = TRUE,
+                remove = FALSE);
+}
+```
+
+Then we read it into R by taking advantage of the fact that we know it will contain 902297 rows (see [this post](https://www.coursera.org/learn/reproducible-research/discussions/weeks/4/threads/38y35MMiEeiERhLphT2-QA?page=1)).
+
+```{r load, cache = TRUE}
+rawData <- read.csv("data/StormData.csv", 
+                    header = TRUE,
+                    nrows = 902297)
+dim(rawData)
+```
+
+Here is the full list of the variables at disposal.
+
+```{r names, cache = TRUE}
+names(rawData)
+```
+
+Most variable names are self-explanatory but few are vague and difficult to find in the Strom Data Documentation or in the FAQ. The following explanation mainly comes from the same [post](https://www.coursera.org/learn/reproducible-research/discussions/weeks/4/threads/38y35MMiEeiERhLphT2-QA?page=1).
+
+From the documentation:  
+
+> [Damage] estimates should be rounded to three significant digits, followed by an alphabetical character signifying the magnitude of the number, i.e., 1.55B for $1,550,000,000. Alphabetical characters used to signify magnitude include “K” for thousands, “M” for millions, and “B” for billions.  
+
+The **CROPDMGEXP** is the magnitude character for **CROPDMG** (crop damage). In the same way, **PROPDMGEXP** is the magnitude character for **PROPDMG** (property damage). B or b = Billion, M or m = Million, K or k = Thousand, H or h = Hundred. In fact, other characters appear. The numbers from 0 to 9 seem to represent units. The symbols "-", "+" and "?" seems to refer to less than, greater than and low certainty. We refer the reader to the analysis and to [How To Handle Exponent Value of PROPDMGEXP and CROPDMGEXP](https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html), where the issue is discussed in more depth.
+
+**WFO** = Weather Forecast Office, **F** = Fujita tornado intensity scale (F-Scale), **MAG** = Magnitude, or Strength, of the event. It is required by NOAA for Wind and Hail events if it is known. Wind Events are in KNOTS. Hail is in INCHES and TENTHS without the decimal (one and one-half are 150). **STATE__ ** = State FIPS number. **LENGTH** = Path length of a tornado (in miles and tenths of miles). **WIDTH** = Path width of a tornado, in yards.
+
+## Processing data
+
+In view of the questions we aim to answer, we can process the raw data in order to extract and isolate the information of interest.
+
+First, we isolate from the whole database the variables of interest and we start constructing our final `Data` data set:
+
+```{r extractVars}
+Data <- rawData
+Data <- Data %>%
+        select(BGN_DATE, EVTYPE, FATALITIES:CROPDMGEXP, REFNUM) %>%
+        filter(FATALITIES > 0 | INJURIES > 0 | PROPDMG > 0 | CROPDMG > 0)
+Data$EVTYPE <- toupper(Data$EVTYPE)
+```
+
+Apart from the `EVTYPE`, `FATALITIES`, `INJURIES`, `PROPDMG`, `PROPDMGEXP`, `CROPDMG` and `CROPDMGEXP` variables, we keep track of the `BGN_DATE` in order to be able to perform an analysis year by year and of the unique identifier `REFNUM` in order to be able to recover from `rawData` the information we may loose while processing the data.
+
+We also need to extract the information about crop and property damage. For this, we need to interpret the magnitude characters:
+
+```{r tablesDmgs}
+table(Data$PROPDMGEXP)
+table(Data$CROPDMGEXP)
+```
+
+In this, we will take advantage of the modern [Storm Events Database](https://www.ncdc.noaa.gov/stormevents/choosedates.jsp?statefips=-999%2CALL).
+
+### Property damage
+
+#### (-) magnitude
+
+```{r -Dmg}
+rawData[rawData$PROPDMGEXP == "-",1:28]
+```
+
+Our database reports only one entry, but searching on the [Storm Events Database](https://www.ncdc.noaa.gov/stormevents/choosedates.jsp?statefips=-999%2CALL) on the same date period there is no data. Therefore, we assume it as a multiplier of 0.
+
+#### (+) magnitude
+
+```{r +Dmg}
+rawData[rawData$PROPDMGEXP == "+",1:28][5,]
+```
+
+From [Storm Events Database](https://www.ncdc.noaa.gov/stormevents/choosedates.jsp?statefips=-999%2CALL) with parameters
+
+- Select State/Area = “Nevada”,
+- Select County = “All”
+- Select Begin Date = End Date = “06/05/1995”
+- Select Event Type = “Tornado”
+
+we find
+
+| Location | County/Zone | St. | Date | Time | T.Z. | Type | Mag | Dth | Inj | PrD | CrD |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Extreme Western | NVZ003 - 004 - 007 CO. | NV | 06/05/1995 | 13:04 | PDT | Tornado | | 0 | 0 | 0.06K | 0.00K |
+
+hence we may assume that (+) is not affecting the `PROPDMG` column.
+
+#### Numeric magnitude
+
+```{r 2DMG}
+rawData[rawData$PROPDMG > 0 & rawData$PROPDMGEXP == "2",1:28]
+```
+
+Again, from [Storm Events Database](https://www.ncdc.noaa.gov/stormevents/choosedates.jsp?statefips=-999%2CALL) with parameters
+
+- Select State/Area = “All”,
+- Select County = “All”
+- Select Begin Date = End Date = “06/08/1995”
+- Select Event Type = “Thunderstorm Wind”
+
+we find
+
+| Location | County/Zone | St. | Date | Time | T.Z. | Type | Mag | Dth | Inj | PrD | CrD |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Shamrock | CALLAWAY CO. | MO | 06/08/1995 | 04:59 | CST | Thunderstorm Wind | 0 kts. | 0 | 0 | 0.12K | 0.00K | 
+
+This, together with the similar considerations that can be found in [How To Handle Exponent Value of PROPDMGEXP and CROPDMGEXP](https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html), leads us to assume that a numeric magnitude entails a multiplication by 10 of the `PROPDMG` column. 
+
+#### Empty magnitude
+
+Similarly, we assume that an empty character implies multiplication by 0.
+        
+#### Extracting the property damage information
+
+We can now introduce a new variable `PropDamage` measuring the actual value of the damage to properties.
+
+```{r propdmg}
+Data$PROPDMGEXP <- toupper(Data$PROPDMGEXP) 
+Data$PROPDMGEXP <- str_replace_all(Data$PROPDMGEXP,
+                                   c("[0-8]" = "10",
+                                     "\\+" = "1",
+                                     "\\-" = "0",
+                                     "B" = "1000000000",
+                                     "M" = "1000000",
+                                     "K" = "1000",
+                                     "H" = "100"))
+Data[Data$PROPDMGEXP == "",]$PROPDMGEXP <- "0"
+Data$PROPDMGEXP <- as.integer(Data$PROPDMGEXP)
+Data$PropDamage <- Data$PROPDMG*Data$PROPDMGEXP
+```
+
+### Crops damage
+
+#### (?) magnitude
+
+```{r ?dmg}
+Data[Data$CROPDMGEXP == "?",c(1,6:7)]
+```
+
+This makes evident that we may consider a (?) magnitude as 0. 
+
+#### Empty magnitude
+
+Concerning the empty magnitude, if we compare
+
+```{r emptydmg}
+rawData[rawData$CROPDMG != 0 & rawData$CROPDMGEXP == "",1:28]
+```
+
+with, for example, a search on the [Storm Events Database](https://www.ncdc.noaa.gov/stormevents/choosedates.jsp?statefips=-999%2CALL) with parameters
+
+- Select State/Area = “Texas”,
+- Select County = “Medina”
+- Select Begin Date = End Date = “04/05/1994”
+- Select Event Type = “All Events”
+
+that returns
+
+| Location | County/Zone | St. | Date | Time | T.Z. | Type | Mag | Dth | Inj | PrD | CrD |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Countywide | MEDINA CO. | TX | 04/15/1994 | 16:30 | CST | Thunderstorm Wind | 0 kts. | 0 | 0 | 500.00K | 0.00K | 
+
+we conclude that we can assume the empty magnitude to be a multiplier by 0, too.
+
+#### Extracting the crops damage information
+
+Therefore, we can introduce the new variable `CropDamage` as above.
+
+```{r cropdmg}
+Data$CROPDMGEXP <- toupper(Data$CROPDMGEXP)
+Data[Data$CROPDMGEXP == "?",]$CROPDMGEXP <- "0"
+Data[Data$CROPDMGEXP == "",]$CROPDMGEXP <- "0"
+Data$CROPDMGEXP <- str_replace_all(Data$CROPDMGEXP,
+                                   c("B" = "1000000000",
+                                     "M" = "1000000",
+                                     "K" = "1000"))
+Data$CROPDMGEXP <- as.integer(Data$CROPDMGEXP)
+Data$CropDamage <- Data$CROPDMG*Data$CROPDMGEXP
+```
+
+### Years
+
+In order to be able to perform an analysis year by year, we are also interested in extracting this information from the raw data.
+
+```{r years}
+Data$BGN_DATE <- Data$BGN_DATE %>% 
+        str_replace_all(" 0:00:00","") %>%
+        mdy
+Data$Year <- year(Data$BGN_DATE)
+```
+
+Moreover, this allows us to observe that before 1982 only tornadoes were recorded and from 1982 until 1992 only tornadoes, thunderstorm winds and hail were recorded. 
+
+```{r recsPerYear, message = FALSE}
+Records <- Data %>%
+        group_by(Year, EVTYPE) %>%
+        summarise(EventCount = n()) %>%
+        ungroup %>%
+        as.data.frame
+head(Records, n = 100)
+```
+
+Not taking this into account would bias our analysis.
+
+### Preliminary version of tidy data set
+
+Now that we have extracted the information we are interested in, we can remove the variables we do not need. Furthermore, in order to limit the bias we just observed, we consider only the years from 1995 included.
+
+```{r}
+Data <- Data %>%
+        select(c(EVTYPE:INJURIES, PropDamage, CropDamage, Year, REFNUM)) %>%
+        filter(Year >1994)
+
+head(Data)
+```
+
+**Remark:** Recall that we are keeping track of the `REFNUM` column to be able to access from `rawData` the information that we lost in the process.
+
+### The "EVTYPE" variable
+
+A quick look at the `EVTYPE` column
+
+```{r evtype}
+sort(unique(Data$EVTYPE))[1:30]
+```
+
+reveals a clear problem in trying to answer our questions without further processing the data. To clarify why this is a problem, let us begin by extracting from the documentation the full list of possible events:
+
+```{r eventList}
+events <- c("ASTRONOMICAL LOW TIDE",
+            "AVALANCHE",
+            "BLIZZARD",
+            "COASTAL FLOOD",
+            "COLD/WIND CHILL",
+            "DEBRIS FLOW",
+            "DENSE FOG",
+            "DENSE SMOKE",
+            "DROUGHT",
+            "DUST DEVIL",
+            "DUST STORM",
+            "EXCESSIVE HEAT",
+            "EXTREME COLD/WIND CHILL",
+            "FLASH FLOOD",
+            "FLOOD", 
+            "FROST/FREEZE",
+            "FUNNEL CLOUD",
+            "FREEZING FOG",
+            "HAIL",
+            "HEAT", 
+            "HEAVY RAIN",
+            "HEAVY SNOW", 
+            "HIGH SURF",
+            "HIGH WIND",
+            "HURRICANE (TYPHOON)",
+            "ICE STORM",
+            "LAKE-EFFECT SNOW",
+            "LAKESHORE FLOOD",
+            "LIGHTNING",
+            "MARINE HAIL",
+            "MARINE HIGH WIND",
+            "MARINE STRONG WIND",
+            "MARINE THUNDERSTORM WIND",
+            "RIP CURRENT",
+            "SEICHE",
+            "SLEET",
+            "STORM SURGE/TIDE",
+            "STRONG WIND",
+            "THUNDERSTORM WIND",
+            "TORNADO",
+            "TROPICAL DEPRESSION",
+            "TROPICAL STORM",
+            "TSUNAMI",
+            "VOLCANIC ASH",
+            "WATERSPOUT",
+            "WILDFIRE",
+            "WINTER STORM",
+            "WINTER WEATHER")
+```
+
+and by making the event type more uniform, for the sake of clarity and simplicity:
+
+```{r eventSimpl}
+events <- str_replace_all(events,
+                          c("COLD/WIND CHILL" = "COLD",
+                            "HURRICANE \\(TYPHOON\\)" = "HURRICANE",
+                            "FROST/FREEZE" = "FROST",
+                            "SURGE/TIDE" = "SURGE"))
+events
+```
+
+Then, let us make `EVTYPE` consistent with our choices. In view of the following quick check of the types we might affect
+
+```{r checkUniques}
+unique(grep("TYPHOON",Data$EVTYPE,value = TRUE))
+unique(grep("HURRICANE",Data$EVTYPE,value = TRUE))
+unique(grep("TROPICAL STORM",Data$EVTYPE,value = TRUE))
+unique(grep("COLD",Data$EVTYPE,value = TRUE))
+unique(grep("CHILL",Data$EVTYPE,value = TRUE))
+unique(grep("FROST",Data$EVTYPE,value = TRUE))
+unique(grep("FREEZE",Data$EVTYPE,value = TRUE))
+unique(grep("SURGE",Data$EVTYPE,value = TRUE))
+unique(grep("TIDE",Data$EVTYPE,value = TRUE))
+```
+
+the next replacements are harmless:
+
+```{r 1stRepl}
+Data[grepl("TYPHOON",Data$EVTYPE),]$EVTYPE <- "HURRICANE"
+Data[grepl("HURRICANE",Data$EVTYPE),]$EVTYPE <- "HURRICANE"
+Data$EVTYPE <- str_replace_all(Data$EVTYPE,
+                               c("FROST/FREEZE" = "FROST",
+                                 "COLD/WIND CHILL" = "COLD",
+                                 "SURGE/TIDE" = "SURGE")
+                               )
+```
+
+Let us see how much information is tied to unconventional event types
+
+```{r 1stEst}
+regular <- Data[Data$EVTYPE %in% events,]
+
+typos <- Data[!(Data$EVTYPE %in% events),]
+
+c(sum(typos$FATALITIES)/sum(Data$FATALITIES),
+  sum(typos$INJURIES)/sum(Data$INJURIES),
+  sum(typos$PropDamage)/sum(Data$PropDamage),
+  sum(typos$CropDamage)/sum(Data$CropDamage))
+```
+
+In three out of four cases, more than 5% of the information is tied to unconventional event types and in two of them even more than 10%. Before proceeding, we would like to reduce these incongruities to around 5%.
+
+Let us first get rid of some redundancies and of some unconventional choices/typos we observed above:
+
+```{r 2ndRepl}
+Data$EVTYPE <- str_replace_all(Data$EVTYPE,
+                               c("^\\s+|\\s+$" = "", # trim spaces
+                                 "TSTM" = "THUNDERSTORM", # googling "TSTM" reveals it is a common short form for "THUNDERSTORM"
+                                 "WIND CHILL" = "COLD",
+                                 "WINDCHILL" = "COLD",
+                                 "COLD WEATHER" = "COLD",
+                                 "COLD TEMPERATURE" = "COLD",
+                                 "RECORD" = "EXTREME",
+                                 "UNSEASONABLE COLD" = "EXTREME COLD",
+                                 "UNSEASONABLY COLD" = "EXTREME COLD"))
+Data[grepl("TROPICAL STORM",Data$EVTYPE),]$EVTYPE <- "TROPICAL STORM"
+Data[grepl("FROST",Data$EVTYPE),]$EVTYPE <- "FROST"
+Data[grepl("FREEZE",Data$EVTYPE),]$EVTYPE <- "FROST"
+```
+
+Then let us clean some typical singular/plural issues:
+
+```{r 3rdRepl}
+Data$EVTYPE <- str_replace_all(Data$EVTYPE,
+                               c("THUNDERSTORMS" = "THUNDERSTORM",
+                                 "FLOODING" = "FLOOD",
+                                 "FLOODS" = "FLOOD",
+                                 "WAVES" = "WAVE",
+                                 "STORMS" = "STORM",
+                                 "WINDS" = "WIND"))
+```
+
+and let us check the situation again:
+
+```{r 2ndEst}
+regular <- Data[Data$EVTYPE %in% events,]
+
+typos <- Data[!(Data$EVTYPE %in% events),]
+
+c(sum(typos$FATALITIES)/sum(Data$FATALITIES),
+  sum(typos$INJURIES)/sum(Data$INJURIES),
+  sum(typos$PropDamage)/sum(Data$PropDamage),
+  sum(typos$CropDamage)/sum(Data$CropDamage))
+```
+
+A clear improvement, but still not satisfactory.
+
+#### Adjusting fatalities
+
+By checking
+
+```{r heatfat}
+typos[typos$FATALITIES >= 10,c("EVTYPE","FATALITIES","REFNUM")]
+```
+
+we see that a significant chunk of fatalities is reported under `HEAT WAVE`, `EXTREME HEAT`, `UNSEASONABLY WARM` and `LANDSLIDE`. The `FOG` question is too delicate, so we do not deal with it. From the documentation:
+
+> The event name of Landslide was renamed to Debris Flow
+
+hence we can perform the replacement. A direct check of
+
+```{r 230915}
+rawData[rawData$REFNUM == 230915,c(8,23:28,36)]
+rawData[rawData$REFNUM == 282903,c(8,23:28,36)]
+```
+
+reveals that `UNSEASONABLY WARM AND DRY` can be considered as `EXCESSIVE HEAT` and `COLD AND SNOW` as `COLD`. Thus,
+
+```{r 7thAdj}
+Data$EVTYPE <- str_replace_all(Data$EVTYPE,
+                               c("HEAT WAVE" = "HEAT",
+                                 "EXTREME HEAT" = "EXCESSIVE HEAT",
+                                 "UNSEASONABLY WARM AND DRY" = "EXCESSIVE HEAT",
+                                 "UNSEASONABLY WARM" = "EXCESSIVE HEAT",
+                                 "LANDSLIDE" = "DEBRIS FLOW",
+                                 "COLD AND SNOW" = "COLD")
+                               )
+```
+
+Finally, we see that
+
+```{r lastEst}
+regular <- Data[Data$EVTYPE %in% events,]
+
+typos <- Data[!(Data$EVTYPE %in% events),]
+
+c(sum(typos$FATALITIES)/sum(Data$FATALITIES),
+  sum(typos$INJURIES)/sum(Data$INJURIES),
+  sum(typos$PropDamage)/sum(Data$PropDamage),
+  sum(typos$CropDamage)/sum(Data$CropDamage))
+```
+
+Now we are satisfied, because all the relative errors are around or under 5%. From now on, we ignore the unconventional event types:
+
+```{r final}
+Data <- Data[Data$EVTYPE %in% events,]
+```
+
+# Results
+
+In order to determine which events are more harmful with respect to population health or have the greatest economic consequences, we aggregate the data by `EVTYPE`:
+
+```{r aggregate}
+GlobEffect <- Data %>%
+        group_by(EVTYPE) %>%
+        summarise(Fatalities = sum(FATALITIES),
+                  Injuries = sum(INJURIES),
+                  PropDamage = sum(PropDamage),
+                  CropDamage = sum(CropDamage)) %>%
+        rename(Event = EVTYPE)
+```
+
+and we have a preliminary look at the rankings:
+
+```{r ranks, message = FALSE}
+GlobEffect %>% arrange(desc(Fatalities)) %>%
+        select(Event, Fatalities) %>%
+        as.data.frame %>%
+        head
+
+GlobEffect %>% arrange(desc(Injuries)) %>%
+        select(Event, Injuries) %>%
+        as.data.frame %>%
+        head
+
+GlobEffect %>% arrange(desc(PropDamage)) %>%
+        select(Event, PropDamage) %>%
+        as.data.frame %>%
+        head
+
+GlobEffect %>% arrange(desc(CropDamage)) %>%
+        select(Event, CropDamage) %>%
+        as.data.frame %>%
+        head
+```
+
+## More harmful events with respect to population health
+
+To determine which events are more harmful, we create a new variable `Harmed` by adding `Fatalities` and `Injuries` and we select the first 10 events
+
+```{r harmed}
+GlobEffect$Harmed <- GlobEffect$Fatalities + GlobEffect$Injuries
+
+top10harm <- GlobEffect %>%
+        arrange(desc(Harmed)) %>%
+        select(Event) %>%
+        unlist(use.names = FALSE) %>%
+        (function(X){X[1:10]})
+```
+
+so that now we can plot their impact on population health
+
+```{r plot1}
+GlobData_top10harm <- GlobEffect %>%
+        arrange(desc(Harmed)) %>%
+        select(c(Event,Fatalities,Injuries)) %>%
+        pivot_longer(cols = !Event,
+                     names_to = "Consequence",
+                     values_to = "Counts") %>%
+        filter(Event %in% top10harm)
+
+GlobData_top10harm$Event <- factor(GlobData_top10harm$Event, levels = top10harm)
+
+ggplot(group_by(GlobData_top10harm,
+                Consequence),
+       aes(x = Event,
+           y = Counts,
+           colour = Consequence)) + 
+        geom_col(position = position_dodge2(reverse = T), 
+                 aes(fill = Consequence)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+        labs(y = "Count", x = "Event", 
+             title = "Top 10 harmful events wrt population health",
+             subtitle = paste("(by decreasing total number of harmed people:",
+                              "injuries + fatalities)",
+                              sep = " "),
+             caption = paste("Bar plot of casualties for the",
+                             "top 10 harmful events 1995-2011\n",
+                             "(based on the NOAA storm database)")
+             )
+```
+
+Therefore, the most harmful events are tornadoes.
+
+## Events with greatest economic consequences
+
+Similarly to what we did above, to determine which events have the greatest economic impact, we create a new variable `Damage` by adding `PropDamage` and `CropDamage` and select the first 10 events
+
+```{r damage}
+GlobEffect$Damage <- GlobEffect$PropDamage + GlobEffect$CropDamage
+
+top10dam <- GlobEffect %>%
+        arrange(desc(Damage)) %>%
+        select(Event) %>%
+        unlist(use.names = FALSE) %>%
+        (function(X){X[1:10]})
+```
+
+so that now we can plot the total cost of their impact
+
+```{r plot2}
+GlobData_top10dam <- GlobEffect %>%
+        arrange(desc(Damage)) %>%
+        select(c(Event,PropDamage,CropDamage)) %>%
+        pivot_longer(cols = !Event,
+                     names_to = "Consequence",
+                     values_to = "Counts") %>%
+        filter(Event %in% top10dam)
+
+GlobData_top10dam$Event <- factor(GlobData_top10dam$Event, levels = top10dam)
+
+ggplot(group_by(GlobData_top10dam,
+                Consequence),
+       aes(x = Event,
+           y = Counts/1000000,
+           colour = Consequence)) + 
+        geom_col(position = position_dodge2(reverse = T), 
+                 aes(fill = Consequence)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+        labs(y = "Cost (M$)", x = "Event", 
+             title = "Top 10 events with greatest economic consequences",
+             subtitle = paste("(by decreasing total value of the damage:",
+                              "properties + crops)",
+                              sep = " "),
+             caption = paste("Bar plot of the damages in M$ for the",
+                             "top 10 costly events 1995-2011\n",
+                             "(based on the NOAA storm database)")
+             )
+```
+
+Therefore, the events with the greatest economic impact are the floods.
+
+# Additional information
+
+## Time series analysis of the average impact
+
+As we mentioned previously, we may refine our analysis by taking into account the frequency of the events in addition to their impact. For instance, we may be interested in separating extremely harmful events which happened only rarely and less harmful events which happen more often.
+
+By grouping the data by year and event type, we can compute the average impact of the major storms and weather events per year. We focus on the union of the 3 most harmful and the 3 most costly events (resulting in 5 events in total) and we estimate their impact by considering their total cost (crops and properties damages) and the total number of casualties (injuries and fatalities) per year, divided by the number of occurrences of the event.
+
+```{r byYearEv, message = FALSE}
+GlobEff_byYrEvt <- Data %>%
+        filter(EVTYPE %in% union(top10harm[1:3],top10dam[1:3])) %>%
+        group_by(Year, EVTYPE) %>%
+        summarise(EventCount = n(),
+                  Harm = (sum(FATALITIES) + sum(INJURIES)),
+                  Dam = (sum(PropDamage) + sum(CropDamage))/(10^6)) %>%
+        pivot_longer(Harm:Dam,
+                     names_to = "Effect",
+                     values_to = "Count")
+
+new_labs <- c("Damage (M$)", "Casualties")
+names(new_labs) <- c("Dam", "Harm")
+
+ggplot(GlobEff_byYrEvt) + 
+        geom_line(aes(Year, Count/EventCount, colour = EVTYPE),
+                  linetype = 1, 
+                  linewidth = 0.75) + 
+        facet_grid(Effect ~ ., 
+                   scales = "free_y",
+                   labeller = labeller(Effect = new_labs)) +
+        labs(y = "Average impact",
+             title = paste("Average impact per year of the most harmful",
+                           "and costly\nstorms and weather events",
+                           sep = " "),
+             colour = "Event",
+             caption = paste("Time series for the average impact per year\n",
+                             "of the top 3 harmful and top 3 costly events",
+                             "1995-2011\n(based on the NOAA storm database)",
+                             sep = " ")
+             )
+```
+
+What we can observe is an apparent (and expected) correlation between hurricanes and storm surges (top plot) and that they are, on average, among the events with the greatest economic impact and the most harmful ones with respect to population health. On the other hand, excessive heat is the weather event with the most significant impact on the health of the population.
+
+## Further investigation directions
+
+It can be interesting to explore the impact also by state/county, in order to collect more precise information depending on the geographical area. 
+
+## R environment
+
+```{r environment}
+sessionInfo()
+```
