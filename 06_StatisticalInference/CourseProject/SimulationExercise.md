@@ -43,7 +43,7 @@ library(ggplot2);
 
 # Simulations
 
-## Empirical density of the exponential
+### Empirical density of the exponential
 
 We begin by simulating 1000 exponentials with \(\lambda = 0.2\)
 
@@ -58,12 +58,14 @@ names(simExp) <- "Exp.2";
 
 and by plotting the resulting empirical density
 
-<div class="figure">
-<img src="SimulationExercise_files/figure-html/plotExp-1.png" alt="Empirical Density"  />
-<p class="caption">(\#fig:plotExp)Empirical Density</p>
+<div class="figure" style="text-align: center">
+<img src="SimulationExercise_files/figure-html/plotExpshow-1.png" alt="Empirical Density"  />
+<p class="caption">(\#fig:plotExpshow)Empirical Density</p>
 </div>
 
 Clearly this is very different from the density of a normal distribution.
+
+### Simulating 1000 means of 40 iid exponentials
 
 Now, let us simulate 1000 means of 40 exponentials with parameter \(\lambda = 0.2\)
 
@@ -98,7 +100,7 @@ with the theoretical mean of the mean, which coincides with the mean of one of t
 ## [1] 5
 ```
 
-Figure \@ref(fig:compPlot) shows the sample mean (in red) of our empirical density, which is clearly very close to the mean of the theoretical normal distribution (represented with a dashed blue curve).
+Figure \@ref(fig:compPlotshow) shows the sample mean (in red) of our empirical density, which is clearly very close to the mean of the theoretical normal distribution (represented with a dashed blue curve).
 
 # Sample Variance versus Theoretical Variance
 
@@ -124,31 +126,33 @@ with the theoretical variance of the mean, which coincides with the variance of 
 ## [1] 0.625
 ```
 
-Figure \@ref(fig:compPlot) again shows one sample standard deviation (in orange) from the sample mean of our empirical density. For comparison purposes, the shaded blue area under the normal density represents one theoretical standard deviation around the theoretical mean.
+Figure \@ref(fig:compPlotshow) shows one sample standard deviation (in orange) from the sample mean of our empirical density. For comparison, the shaded blue area represents one theoretical standard deviation around the theoretical mean.
+
+The difference between the empirical and the theoretical parameters comes from the fact that this is an approximation by the CLT. We would need an infinite number of iid exponentials to attain the equality.
 
 # Distribution
 
 In order to verify that the distribution of our average of 40 iid exponentials is approximately normal, let us plot the empirical distribution in comparison with the theoretical one. Let us also highlight a few parameters like empirical and theoretical means and standard deviations.
 
-<div class="figure">
-<img src="SimulationExercise_files/figure-html/compPlot-1.png" alt="Density Comparison"  />
-<p class="caption">(\#fig:compPlot)Density Comparison</p>
+<div class="figure" style="text-align: center">
+<img src="SimulationExercise_files/figure-html/compPlotshow-1.png" alt="Density Comparison"  />
+<p class="caption">(\#fig:compPlotshow)Density Comparison</p>
 </div>
 
 As we expect, in view of the Central Limit Theorem, the empirical distribution of the mean of 40 iid exponentials of parameter \(\lambda\) is approximately normal with mean \(1/\lambda\) and standard deviation \(1/\sqrt{40}\lambda\). In order to find additional evidence, let us plot a q-q plot of the theoretical quantiles against the empirical ones.
 
-<div class="figure">
-<img src="SimulationExercise_files/figure-html/qqplot-1.png" alt="q-q plot"  />
-<p class="caption">(\#fig:qqplot)q-q plot</p>
+<div class="figure" style="text-align: center">
+<img src="SimulationExercise_files/figure-html/qqshow-1.png" alt="q-q plot"  />
+<p class="caption">(\#fig:qqshow)q-q plot</p>
 </div>
 
 For the convenience of the interested reader, the *quantile-quantile (q-q) plot* is a graphical technique for determining if two data sets come from populations with a common distribution. A q-q plot is a plot of the quantiles of the first data set against the quantiles of the second data set. A 45-degree reference line is also plotted. If the two sets come from a population with the same distribution, the points should fall approximately along this reference line. The greater the departure from this reference line, the greater the evidence for the conclusion that the two data sets have come from populations with different distributions.
 
 # Appendices
 
-## Code for the empirical density
+### Code for the empirical density
 
-Code for Figure \@ref(fig:plotExp).
+Code for Figure \@ref(fig:plotExpshow).
 
 
 ```r
@@ -167,9 +171,9 @@ ggplot(data = simExp, aes(x = Exp.2)) +
                              sep = " "));
 ```
 
-## Code for the density comparison
+### Code for the density comparison
 
-Code for Figure \@ref(fig:compPlot).
+Code for Figure \@ref(fig:compPlotshow).
 
 
 ```r
@@ -221,9 +225,9 @@ ggplot(data = mn, aes(x = Sample.mean)) +
                              sep = " "));
 ```
 
-## Code for the q-q plot
+### Code for the q-q plot
 
-Code for Figure \@ref(fig:qqplot).
+Code for Figure \@ref(fig:qqshow).
 
 
 ```r

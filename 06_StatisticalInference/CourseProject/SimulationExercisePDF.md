@@ -58,11 +58,11 @@ and by plotting the resulting empirical density
 
 \begin{figure}[H]
 
-{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/plotExp-1} 
+{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/plotExpshow-1} 
 
 }
 
-\caption{Empirical Density}(\#fig:plotExp)
+\caption{Empirical Density}(\#fig:plotExpshow)
 \end{figure}
 
 Clearly this is very different from the density of a normal distribution.
@@ -100,7 +100,7 @@ with the theoretical mean of the mean, which coincides with the mean of one of t
 ## [1] 5
 ```
 
-Figure \@ref(fig:compPlot) shows the sample mean (in red) of our empirical density, which is clearly very close to the mean of the theoretical normal distribution (represented with a dashed blue curve).
+Figure \@ref(fig:compPlotshow) shows the sample mean (in red) of our empirical density, which is clearly very close to the mean of the theoretical normal distribution (represented with a dashed blue curve).
 
 # Sample Variance versus Theoretical Variance
 
@@ -126,7 +126,9 @@ with the theoretical variance of the mean, which coincides with the variance of 
 ## [1] 0.625
 ```
 
-Figure \@ref(fig:compPlot) again shows one sample standard deviation (in orange) from the sample mean of our empirical density. For comparison purposes, the shaded blue area under the normal density represents one theoretical standard deviation around the theoretical mean.
+Figure \@ref(fig:compPlotshow) shows one sample standard deviation (in orange) from the sample mean of our empirical density. For comparison, the shaded blue area represents one theoretical standard deviation around the theoretical mean.
+
+The difference between the empirical and the theoretical parameters comes from the fact that this is an approximation by the CLT. We would need an infinite number of iid exponentials to attain the equality.
 
 # Distribution
 
@@ -134,22 +136,22 @@ In order to verify that the distribution of our average of 40 iid exponentials i
 
 \begin{figure}[H]
 
-{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/compPlot-1} 
+{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/compPlotshow-1} 
 
 }
 
-\caption{Density Comparison}(\#fig:compPlot)
+\caption{Density Comparison}(\#fig:compPlotshow)
 \end{figure}
 
 As we expect, in view of the Central Limit Theorem, the empirical distribution of the mean of 40 iid exponentials of parameter \(\lambda\) is approximately normal with mean \(1/\lambda\) and standard deviation \(1/\sqrt{40}\lambda\). In order to find additional evidence, let us plot a q-q plot of the theoretical quantiles against the empirical ones.
 
 \begin{figure}[H]
 
-{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/qqplot-1} 
+{\centering \includegraphics[height=2in]{SimulationExercisePDF_files/figure-latex/qqplotshow-1} 
 
 }
 
-\caption{q-q plot}(\#fig:qqplot)
+\caption{q-q plot}(\#fig:qqplotshow)
 \end{figure}
 
 For the convenience of the interested reader, the *quantile-quantile (q-q) plot* is a graphical technique for determining if two data sets come from populations with a common distribution. A q-q plot is a plot of the quantiles of the first data set against the quantiles of the second data set. A 45-degree reference line is also plotted. If the two sets come from a population with the same distribution, the points should fall approximately along this reference line. The greater the departure from this reference line, the greater the evidence for the conclusion that the two data sets have come from populations with different distributions.
@@ -158,7 +160,7 @@ For the convenience of the interested reader, the *quantile-quantile (q-q) plot*
 
 ## Code for the empirical density
 
-Code for Figure \@ref(fig:plotExp).
+Code for Figure \@ref(fig:plotExpshow).
 
 
 ```r
@@ -179,7 +181,7 @@ ggplot(data = simExp, aes(x = Exp.2)) +
 
 ## Code for the density comparison
 
-Code for Figure \@ref(fig:compPlot).
+Code for Figure \@ref(fig:compPlotshow).
 
 
 ```r
@@ -197,6 +199,8 @@ line.data <- data.frame(xintercept = c(mean(mn$Sample.mean)-sd(mn$Sample.mean),
 my.labs <- list(bquote(bar(X) - s),
                 bquote(bar(X)),
                 bquote(bar(X) + s));
+
+# https://github.com/tidyverse/ggplot2/wiki/Plotmath
 
 ggplot(data = mn, aes(x = Sample.mean)) + 
         geom_histogram(binwidth = .3, 
@@ -225,7 +229,7 @@ ggplot(data = mn, aes(x = Sample.mean)) +
              title = "Density of averages of 40 exponentials",
              caption = paste("Empirical density function of the averages of",
                              "40 exponentials with parameter lambda = 0.2\n",
-                             "in comparison with the density of a normal",
+                             "compared with the density of a normal",
                              "distribution with mu = 1/lambda and",
                              "sd = 1/sqrt(40)lambda",
                              sep = " "));
@@ -233,7 +237,7 @@ ggplot(data = mn, aes(x = Sample.mean)) +
 
 ## Code for the q-q plot
 
-Code for Figure \@ref(fig:qqplot).
+Code for Figure \@ref(fig:qqplotshow).
 
 
 ```r
@@ -251,10 +255,10 @@ ggplot(data = mn, aes(sample = Sample.mean)) +
              y = "Empirical exponential quantiles",
              title = "q-q plot",
              caption = paste("q-q plot of the quantiles of a normal",
-                             "distribution with mu = 1/lambda", 
-                             "and sd = 1/sqrt(40)lambda\n",
+                             "distribution with mu = 1/lambda,", 
+                             "sd = 1/sqrt(40)lambda,\n",
                              "against the empirical quantiles from",
                              "our sample of means of 40 exponentials",
                              sep = " ")) + 
-        theme(aspect.ratio=1);
+        theme(aspect.ratio = 1);
 ```
