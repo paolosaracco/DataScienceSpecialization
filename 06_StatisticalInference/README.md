@@ -1,3 +1,3 @@
-# Reproducible Research
+# Statistical Inference
 
-Material for the Reproducible Research course.
+Material for the Statistical Inference course.
