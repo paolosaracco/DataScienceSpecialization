@@ -138,7 +138,7 @@ level = 1 mg/day) with group 1 (dose level = 0.5 mg/day):
 
 
 ```r
-t.test(dose1, dose.5, alternative = "greater")$p.value
+t.test(grp2, grp1, alternative = "greater")$p.value
 ```
 
 ```
@@ -151,7 +151,7 @@ level = 2 mg/day) with group 2 (dose level = 1 mg/day):
 
 
 ```r
-t.test(dose2, dose1, alternative = "greater")$p.value
+t.test(grp3, grp2, alternative = "greater")$p.value
 ```
 
 ```
@@ -170,10 +170,10 @@ intervals for the means using the `conf.int` component of `t.test`:
 
 
 ```
-##            min      max
-## grp1  8.499046 12.71095
-## grp2 17.668512 21.80149
-## grp3 24.333643 27.86636
+##              min      max
+## grp1mn  8.499046 12.71095
+## grp2mn 17.668512 21.80149
+## grp3mn 24.333643 27.86636
 ```
 
 Comparing the computed means (ref:splitDose) with the confidence intervals 

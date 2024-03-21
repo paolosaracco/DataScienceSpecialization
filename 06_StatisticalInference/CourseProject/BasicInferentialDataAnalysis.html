@@ -1561,12 +1561,12 @@ being that a higher level of vitamin C entails a longer length of odontoblasts.<
 <p>Then we perform a T test to check whether there is a significant difference
 between the means at level <span class="math inline">\(\alpha = 0.05\)</span>. If we compare group 2 (dose
 level = 1 mg/day) with group 1 (dose level = 0.5 mg/day):</p>
-<pre class="r"><code>t.test(dose1, dose.5, alternative = &quot;greater&quot;)$p.value</code></pre>
+<pre class="r"><code>t.test(grp2, grp1, alternative = &quot;greater&quot;)$p.value</code></pre>
 <pre><code>## [1] 6.341504e-08</code></pre>
 <p>We can reject the null hypothesis that the two means coincide, since the
 p-value is much smaller than 0.05. Similarly, if we compare group 3 (dose
 level = 2 mg/day) with group 2 (dose level = 1 mg/day):</p>
-<pre class="r"><code>t.test(dose2, dose1, alternative = &quot;greater&quot;)$p.value</code></pre>
+<pre class="r"><code>t.test(grp3, grp2, alternative = &quot;greater&quot;)$p.value</code></pre>
 <pre><code>## [1] 9.532148e-06</code></pre>
 <p>then we can reject the null hypothesis of equal means, since the p-value is much
 smaller than 0.05. There is no need, in this case, to test group 3 versus
@@ -1575,10 +1575,10 @@ group 1.</p>
 longer length of the odontoblasts at level 0.05.</p>
 <p>For the sake of clarity, we can also compute two-sided 95% T confidence
 intervals for the means using the <code>conf.int</code> component of <code>t.test</code>:</p>
-<pre><code>##            min      max
-## grp1  8.499046 12.71095
-## grp2 17.668512 21.80149
-## grp3 24.333643 27.86636</code></pre>
+<pre><code>##              min      max
+## grp1mn  8.499046 12.71095
+## grp2mn 17.668512 21.80149
+## grp3mn 24.333643 27.86636</code></pre>
 <p>Comparing the computed means (ref:splitDose) with the confidence intervals
 we computed, we can confirm that we may safely reject the null hypotheses at
 level 0.05.</p>

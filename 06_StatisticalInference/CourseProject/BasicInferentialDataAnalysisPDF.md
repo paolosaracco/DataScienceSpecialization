@@ -46,7 +46,8 @@ library(ggplot2);
 We start by having a look at the size of our data set: 
 dim = 60 x 3.
 Hence we have, as expected, 3 observations for 
-60 subjects. Let us have a look at the head, the tail and the structure of our data
+60 subjects. Let us have a look at the head, the tail 
+and the structure of our data
 
 
 ```
@@ -208,3 +209,8 @@ We conclude that there can be a relationship between the delivery method and
 the length of the odontoblasts. Namely, subjects which received vitamin C via 
 orange juice have, on average, longer odontoblasts than those who received it 
 via ascorbic acid.
+
+Readers interested in a literate version of this report, with explicit R code,
+may refer to the 
+[R markdown file](https://github.com/paolosaracco/DataScienceSpecialization/blob/main/06_StatisticalInference/CourseProject/BasicInferentialDataAnalysis.Rmd) 
+on my GitHub repository. 
