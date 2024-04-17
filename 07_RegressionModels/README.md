@@ -1,3 +1,3 @@
 # Statistical Inference
 
-Material for the Statistical Inference course.
+Material for the Regression Models course.
