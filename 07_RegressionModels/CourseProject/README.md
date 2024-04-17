@@ -1,3 +1,3 @@
-# Statistical Inference
+# Course Project
 
-Material for the Statistical Inference course.
+TBD
