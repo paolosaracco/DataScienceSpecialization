@@ -1,7 +1,7 @@
 ---
 title: "The Effect of Vitamin C on Tooth Growth in Guinea Pigs"
 author: "Paolo Saracco"
-date: "2024-03-21"
+date: "2024-04-18"
 output:
         bookdown::html_document2:
                 fig_caption: true
@@ -98,9 +98,9 @@ potential correlations:
 <img src="BasicInferentialDataAnalysis_files/figure-html/pairplot-1.png" style="display: block; margin: auto;" />
 
 Apparently, the dose level has a clear effect, while we cannot draw conclusions
-about the delivery method, yet. Two boxplots, one by dose level and one by 
-delivery method, confirm the effect of dose level and suggest a possible effect 
-of delivery method:
+about the delivery method, yet. The following additional boxplot, grouped by 
+delivery method, confirms the effect of dosage and suggest a possible effect 
+of delivery method at dose level 0.5 and 1:
 
 <img src="BasicInferentialDataAnalysis_files/figure-html/boxplot-1.png" style="display: block; margin: auto;" />
 
@@ -108,7 +108,10 @@ of delivery method:
 
 In view of the relative small size of samples and under the reasonable 
 hypothesis that the underlying data are iid Gaussian, we are going to perform 
-two group T tests for equality of means.
+two group T tests for equality of means. However, it is important to consider the 
+multiple hypothesis testing issue here as we are going to perform 5
+tests. We will implicitly apply the Bonferroni correction, so for a level 
+\(\alpha = 0.05\) we will consider significant the p-values under \(0.01\).
 
 ### Compare tooth growth by dose level
 
@@ -128,13 +131,15 @@ and we compute their sample means:
 
 
 ```
-## grp1.len grp2.len grp3.len 
-##   10.605   19.735   26.100
+##   grp1   grp2   grp3 
+## 10.605 19.735 26.100
 ```
 
 Then we perform a T test to check whether there is a significant difference 
-between the means at level \(\alpha = 0.05\). If we compare group 2 (dose 
-level = 1 mg/day) with group 1 (dose level = 0.5 mg/day):
+between the means at level \(\alpha = 0.05\). For the sake of space, 
+we only report the p-value. The full output of the test can be found in the 
+appendices. If we compare group 2 (dose level = 1 mg/day) with group 1 
+(dose level = 0.5 mg/day):
 
 
 ```r
@@ -146,7 +151,7 @@ t.test(grp2, grp1, alternative = "greater")$p.value
 ```
 
 We can reject the null hypothesis that the two means coincide, since the 
-p-value is much smaller than 0.05. Similarly, if we compare group 3 (dose 
+p-value is much smaller than 0.01. Similarly, if we compare group 3 (dose 
 level = 2 mg/day) with group 2 (dose level = 1 mg/day):
 
 
@@ -159,59 +164,190 @@ t.test(grp3, grp2, alternative = "greater")$p.value
 ```
 
 then we can reject the null hypothesis of equal means, since the p-value is much 
-smaller than 0.05. There is no need, in this case, to test group 3 versus 
+smaller than 0.01. There is no need, in this case, to test group 3 versus 
 group 1.
 
-Therefore, we conclude that a higher level of vitamin C is correlated with a 
+Therefore, we conclude that a higher level of vitamin C is related with a 
 longer length of the odontoblasts at level 0.05.
 
-For the sake of clarity, we can also compute two-sided 95% T confidence 
+For the sake of clarity, we can also compute two-sided 99% T confidence 
 intervals for the means using the `conf.int` component of `t.test`:
 
 
 ```
 ##              min      max
-## grp1mn  8.499046 12.71095
-## grp2mn 17.668512 21.80149
-## grp3mn 24.333643 27.86636
+## grp1mn  7.726392 13.48361
+## grp2mn 16.910337 22.55966
+## grp3mn 23.685584 28.51442
 ```
 
-Comparing the computed means (ref:splitDose) with the confidence intervals 
+Comparing the computed means above with the confidence intervals 
 we computed, we can confirm that we may safely reject the null hypotheses at 
 level 0.05.
 
 ### Compare tooth growth by delivery method
 
-Our second hypothesis is that also the delivery method is correlated with 
-tooth growth. Namely, that subjects that received vitamin C with orange juice 
-has longer odontoblasts.
+Our second hypothesis is that also the delivery method affects 
+tooth growth. Namely, we suspect that subjects that received vitamin C at dose 
+levels 0.5 and 1 mg/day through orange juice have longer odontoblasts. Instead, 
+we believe that the supply method has no significant effect at a dosage of 
+2 mg/day.
 
-Let us begin by separating the two groups, OJ versus VC, and by computing 
-the respective sample means:
+We separate the three groups by dosage, OJ versus VC, and we 
+compute the respective sample means:
 
 
 ```
-##   OJ.len   VC.len 
-## 20.66333 16.96333
+## OJgrp1 OJgrp2 OJgrp3 VCgrp1 VCgrp2 VCgrp3 
+##  13.23  22.70  26.06   7.98   7.98  26.14
 ```
 
 Then we perform a T test to check whether there is a significant difference 
-between the means at level \(\alpha = 0.05\). If we compare the OJ group with 
-the VC group:
+between the means at level \(\alpha = 0.05\). If we compare the OJ group with the VC group:
 
 
 ```r
-t.test(suppOJ,suppVC,alternative = "greater")$p.value
+t.test(suppOJgrp1,suppVCgrp1,alternative = "greater")$p.value
 ```
 
 ```
-## [1] 0.03031725
+## [1] 0.003179303
 ```
 
-then we can reject the null hypothesis of equal means at level 0.05, because 
-the p-value is slightly smaller.
+```r
+t.test(suppOJgrp2,suppVCgrp2,alternative = "greater")$p.value
+```
 
-We conclude that there can be a relationship between the delivery method and 
-the length of the odontoblasts. Namely, subjects which received vitamin C via 
-orange juice have, on average, longer odontoblasts than those who received it 
-via ascorbic acid.
+```
+## [1] 0.0005191879
+```
+
+then we can reject the hypothesis of equal means at level 0.05 for 
+the 0.5 and the 1 mg/day dose levels, while
+
+
+```r
+t.test(suppOJgrp3,suppVCgrp3,alternative = "greater")$p.value
+```
+
+```
+## [1] 0.5180742
+```
+
+so we cannot reject the null hypothesis of equal means for the highest dosage.
+
+We conclude that there is a relationship between the delivery method and 
+the length of the odontoblasts at lower dosage (0.5 or 1 mg/day): subjects that 
+received vitamin C via orange juice have, on average, longer odontoblasts than 
+those who received it via ascorbic acid.
+
+# Appendices
+
+## Full outcomes of the T tests to check the effect of dosage.
+
+### Group 2 (dose level = 1 mg/day) vs group 1 (dose level = 0.5 mg/day):
+
+
+```r
+t.test(grp2, grp1, alternative = "greater")
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  grp2 and grp1
+## t = 6.4766, df = 37.986, p-value = 6.342e-08
+## alternative hypothesis: true difference in means is greater than 0
+## 95 percent confidence interval:
+##  6.753323      Inf
+## sample estimates:
+## mean of x mean of y 
+##    19.735    10.605
+```
+
+### Group 3 (dose level = 2 mg/day) vs group 2 (dose level = 1 mg/day):
+
+
+```r
+t.test(grp3, grp2, alternative = "greater")
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  grp3 and grp2
+## t = 4.9005, df = 37.101, p-value = 9.532e-06
+## alternative hypothesis: true difference in means is greater than 0
+## 95 percent confidence interval:
+##  4.17387     Inf
+## sample estimates:
+## mean of x mean of y 
+##    26.100    19.735
+```
+
+## Full outcomes of the T tests to check the effect of delivery method by dosage
+
+### Orange juice vs ascorbic acid at dosage 0.5
+
+
+```r
+t.test(suppOJgrp1,suppVCgrp1,alternative = "greater")
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  suppOJgrp1 and suppVCgrp1
+## t = 3.1697, df = 14.969, p-value = 0.003179
+## alternative hypothesis: true difference in means is greater than 0
+## 95 percent confidence interval:
+##  2.34604     Inf
+## sample estimates:
+## mean of x mean of y 
+##     13.23      7.98
+```
+
+### Orange juice vs ascorbic acid at dosage 1
+
+
+```r
+t.test(suppOJgrp2,suppVCgrp2,alternative = "greater")
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  suppOJgrp2 and suppVCgrp2
+## t = 4.0328, df = 15.358, p-value = 0.0005192
+## alternative hypothesis: true difference in means is greater than 0
+## 95 percent confidence interval:
+##  3.356158      Inf
+## sample estimates:
+## mean of x mean of y 
+##     22.70     16.77
+```
+
+### Orange juice vs ascorbic acid at dosage 2
+
+
+```r
+t.test(suppOJgrp3,suppVCgrp3,alternative = "greater")
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  suppOJgrp3 and suppVCgrp3
+## t = -0.046136, df = 14.04, p-value = 0.5181
+## alternative hypothesis: true difference in means is greater than 0
+## 95 percent confidence interval:
+##  -3.1335     Inf
+## sample estimates:
+## mean of x mean of y 
+##     26.06     26.14
+```

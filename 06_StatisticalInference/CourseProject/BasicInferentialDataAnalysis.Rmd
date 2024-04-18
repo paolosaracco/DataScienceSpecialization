@@ -69,22 +69,28 @@ pairs(ToothGrowth)
 ```
 
 Apparently, the dose level has a clear effect, while we cannot draw conclusions
-about the delivery method, yet. Two boxplots, one by dose level and one by 
-delivery method, confirm the effect of dose level and suggest a possible effect 
-of delivery method:
+about the delivery method, yet. The following additional boxplot, grouped by 
+delivery method, confirms the effect of dosage and suggest a possible effect 
+of delivery method at dose level 0.5 and 1:
 
 ```{r boxplot, echo = F, fig.align = "center"}
-par(mfrow = c(1,2))
-with(ToothGrowth, boxplot(len ~ dose, ylab = "Length"))
-with(ToothGrowth, boxplot(len ~ supp, ylab = "Length"))
-par(mfrow = c(1,1))
+ToothGrowth <- ToothGrowth %>% mutate(dose = factor(dose), supp = factor(supp))
+g <- ggplot(ToothGrowth, aes(x = dose, y = len, fill = dose))
+g <- g + geom_boxplot() + facet_wrap(~ supp) + theme_bw()
+g <- g + ggtitle("Odontoblast Length vs Dose level by Supplement type ") +
+        labs(x = "Dose (mg/day)", y = "Length") +
+        guides(fill = guide_legend(title = "Dose"))
+g
 ```
 
 # Hypothesis tests
 
 In view of the relative small size of samples and under the reasonable 
 hypothesis that the underlying data are iid Gaussian, we are going to perform 
-two group T tests for equality of means.
+two group T tests for equality of means. However, it is important to consider the 
+multiple hypothesis testing issue here as we are going to perform 5
+tests. We will implicitly apply the Bonferroni correction, so for a level 
+\(\alpha = 0.05\) we will consider significant the p-values under \(0.01\).
 
 ### Compare tooth growth by dose level
 
@@ -115,19 +121,21 @@ grp3 <- ToothGrowth %>%
         filter(dose == 2) %>%
         select(len)
 
-c("grp1" = colMeans(grp1), "grp2" = colMeans(grp2), "grp3" = colMeans(grp3))
+c("grp1" = mean(grp1$len), "grp2" = mean(grp2$len), "grp3" = mean(grp3$len))
 ```
 
 Then we perform a T test to check whether there is a significant difference 
-between the means at level \(\alpha = 0.05\). If we compare group 2 (dose 
-level = 1 mg/day) with group 1 (dose level = 0.5 mg/day):
+between the means at level \(\alpha = 0.05\). For the sake of space, 
+we only report the p-value. The full output of the test can be found in the 
+appendices. If we compare group 2 (dose level = 1 mg/day) with group 1 
+(dose level = 0.5 mg/day):
 
 ```{r firstTest}
 t.test(grp2, grp1, alternative = "greater")$p.value
 ```
 
 We can reject the null hypothesis that the two means coincide, since the 
-p-value is much smaller than 0.05. Similarly, if we compare group 3 (dose 
+p-value is much smaller than 0.01. Similarly, if we compare group 3 (dose 
 level = 2 mg/day) with group 2 (dose level = 1 mg/day):
 
 ```{r secondTest}
@@ -135,62 +143,124 @@ t.test(grp3, grp2, alternative = "greater")$p.value
 ```
 
 then we can reject the null hypothesis of equal means, since the p-value is much 
-smaller than 0.05. There is no need, in this case, to test group 3 versus 
+smaller than 0.01. There is no need, in this case, to test group 3 versus 
 group 1.
 
-Therefore, we conclude that a higher level of vitamin C is correlated with a 
+Therefore, we conclude that a higher level of vitamin C is related with a 
 longer length of the odontoblasts at level 0.05.
 
-For the sake of clarity, we can also compute two-sided 95% T confidence 
+For the sake of clarity, we can also compute two-sided 99% T confidence 
 intervals for the means using the `conf.int` component of `t.test`:
 
 ```{r confInt, echo = F}
-grp1mn <- t.test(grp1, alternative = "two.sided")$conf.int[1:2]
-grp2mn <- t.test(grp2, alternative = "two.sided")$conf.int[1:2]
-grp3mn <- t.test(grp3, alternative = "two.sided")$conf.int[1:2]
+grp1mn <- t.test(grp1, alternative = "two.sided", conf.level = 0.99)$conf.int[1:2]
+grp2mn <- t.test(grp2, alternative = "two.sided", conf.level = 0.99)$conf.int[1:2]
+grp3mn <- t.test(grp3, alternative = "two.sided", conf.level = 0.99)$conf.int[1:2]
 
 df <- as.data.frame(rbind(grp1mn,grp2mn,grp3mn))
 names(df) <- c("min","max")
 df
 ```
 
-Comparing the computed means (ref:splitDose) with the confidence intervals 
+Comparing the computed means above with the confidence intervals 
 we computed, we can confirm that we may safely reject the null hypotheses at 
 level 0.05.
 
 ### Compare tooth growth by delivery method
 
-Our second hypothesis is that also the delivery method is correlated with 
-tooth growth. Namely, that subjects that received vitamin C with orange juice 
-has longer odontoblasts.
+Our second hypothesis is that also the delivery method affects 
+tooth growth. Namely, we suspect that subjects that received vitamin C at dose 
+levels 0.5 and 1 mg/day through orange juice have longer odontoblasts. Instead, 
+we believe that the supply method has no significant effect at a dosage of 
+2 mg/day.
 
-Let us begin by separating the two groups, OJ versus VC, and by computing 
-the respective sample means:
+We separate the three groups by dosage, OJ versus VC, and we 
+compute the respective sample means:
 
 ```{r suppsGrp, echo = F}
-suppOJ <- ToothGrowth %>%
-        filter(supp == "OJ") %>%
+suppOJgrp1 <- ToothGrowth %>%
+        filter(supp == "OJ", dose == "0.5") %>%
         select(len)
 
-suppVC <- ToothGrowth %>%
-        filter(supp == "VC") %>%
+suppOJgrp2 <- ToothGrowth %>%
+        filter(supp == "OJ", dose == "1") %>%
         select(len)
 
-c("OJ" = colMeans(suppOJ), "VC" = colMeans(suppVC))
+suppOJgrp3 <- ToothGrowth %>%
+        filter(supp == "OJ", dose == "2") %>%
+        select(len)
+
+suppVCgrp1 <- ToothGrowth %>%
+        filter(supp == "VC", dose == "0.5") %>%
+        select(len)
+
+suppVCgrp2 <- ToothGrowth %>%
+        filter(supp == "VC", dose == "1") %>%
+        select(len)
+
+suppVCgrp3 <- ToothGrowth %>%
+        filter(supp == "VC", dose == "2") %>%
+        select(len)
+
+c("OJgrp1" = mean(suppOJgrp1$len), "OJgrp2" = mean(suppOJgrp2$len), 
+  "OJgrp3" = mean(suppOJgrp3$len), "VCgrp1" = mean(suppVCgrp1$len), 
+  "VCgrp2" = mean(suppVCgrp1$len), "VCgrp3" = mean(suppVCgrp3$len))
 ```
 
 Then we perform a T test to check whether there is a significant difference 
-between the means at level \(\alpha = 0.05\). If we compare the OJ group with 
-the VC group:
+between the means at level \(\alpha = 0.05\). If we compare the OJ group with the VC group:
 
 ```{r thirdTest}
-t.test(suppOJ,suppVC,alternative = "greater")$p.value
+t.test(suppOJgrp1,suppVCgrp1,alternative = "greater")$p.value
+t.test(suppOJgrp2,suppVCgrp2,alternative = "greater")$p.value
 ```
 
-then we can reject the null hypothesis of equal means at level 0.05, because 
-the p-value is slightly smaller.
+then we can reject the hypothesis of equal means at level 0.05 for 
+the 0.5 and the 1 mg/day dose levels, while
 
-We conclude that there can be a relationship between the delivery method and 
-the length of the odontoblasts. Namely, subjects which received vitamin C via 
-orange juice have, on average, longer odontoblasts than those who received it 
-via ascorbic acid.
+```{r fourthTest}
+t.test(suppOJgrp3,suppVCgrp3,alternative = "greater")$p.value
+```
+
+so we cannot reject the null hypothesis of equal means for the highest dosage.
+
+We conclude that there is a relationship between the delivery method and 
+the length of the odontoblasts at lower dosage (0.5 or 1 mg/day): subjects that 
+received vitamin C via orange juice have, on average, longer odontoblasts than 
+those who received it via ascorbic acid.
+
+# Appendices
+
+## Full outcomes of the T tests to check the effect of dosage.
+
+### Group 2 (dose level = 1 mg/day) vs group 1 (dose level = 0.5 mg/day):
+
+```{r firstTestout}
+t.test(grp2, grp1, alternative = "greater")
+```
+
+### Group 3 (dose level = 2 mg/day) vs group 2 (dose level = 1 mg/day):
+
+```{r secondTestout}
+t.test(grp3, grp2, alternative = "greater")
+```
+
+## Full outcomes of the T tests to check the effect of delivery method by dosage
+
+### Orange juice vs ascorbic acid at dosage 0.5
+
+```{r thirdTestout1}
+t.test(suppOJgrp1,suppVCgrp1,alternative = "greater")
+```
+
+### Orange juice vs ascorbic acid at dosage 1
+
+```{r thirdTestout2}
+t.test(suppOJgrp2,suppVCgrp2,alternative = "greater")
+```
+
+### Orange juice vs ascorbic acid at dosage 2
+
+```{r fourthTestout}
+t.test(suppOJgrp3,suppVCgrp3,alternative = "greater")
+```
