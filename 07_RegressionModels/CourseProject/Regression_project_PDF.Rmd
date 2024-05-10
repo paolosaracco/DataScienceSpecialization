@@ -1,0 +1,215 @@
+---
+title: "Motor Trend: Does auto transmission improve mpg performance?"
+author: "Paolo Saracco (with knitr, Rmd to pdf)"
+date: "`r Sys.Date()`"
+geometry: margin=1.5cm
+documentclass: extarticle
+fontsize: 9pt
+fontfamily: mathpazo
+header-includes:
+  - \usepackage{titling}
+  - \pretitle{\vspace{-1cm} \begin{flushleft} \itshape \bfseries \Huge}
+  - \posttitle{\end{flushleft}}
+  - \preauthor{\begin{flushleft} \itshape}
+  - \postauthor{\end{flushleft}}
+  - \predate{\begin{flushleft} \small}
+  - \postdate{\end{flushleft}}
+output:
+        bookdown::pdf_document2:
+                fig_caption: true
+                toc: false
+                number_sections: false
+                keep_md: true
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Executive summary
+
+We examine the effect of the transmission type (manual vs automatic) on the 
+miles per gallon (mpg) in the mtcars dataset. Regression analysis 
+using transmission type, weight, and quarter mile time as
+explanatory variables leads to conclude that manual cars get on average 
+14 more mpg than automatic cars, holding the other effects constant.
+
+**Packages:** We will use the `dplyr` package for working with data frames and 
+the `ggplot2` package for graphs.
+
+```{r packages}
+library(dplyr); library(ggplot2)
+```
+
+**Data:** The data set comes from the 1974 Motor Trend US magazine, and comprises 
+fuel consumption and 10 aspects of automobile design and performance for 32 
+automobiles (1973–74 models).
+
+```{r data}
+library(datasets); data("mtcars")
+```
+
+## Exploratory data analysis
+
+We are dealing with a 
+`r paste(dim(mtcars)[1], "x", dim(mtcars)[2], sep = " ")` 
+data set: we have `r dim(mtcars)[2]` observations for 
+`r dim(mtcars)[1]` cars. Let us have a look at the data (we refer the reader 
+to the `mtcars` help page for the explanation of the variable names).
+
+```{r datainspection, results = 'hide'}
+head(mtcars); tail(mtcars); str(mtcars); summary(mtcars)
+```
+
+To begin with, it is useful to look at how the different `mpg`
+values vary across the two
+groups: see **Figure \@ref(fig:boxplot)**.
+It seems that cars with manual transmission cover more `mpg`,
+on average. To quantify this, we perform a
+linear regression with `mpg` as outcome and the factor variable `am` as 
+predictor, without intercept (which is the same as a T-test)
+
+```{r naiveFit}
+naive_fit <- lm(mpg ~ as.factor(am)-1, data = mtcars)
+```
+
+|  | mean | std error | 95% conf int |
+| :---: | :---: | :---: | :---: |
+| automatic | `r round(summary(naive_fit)$coefficients[1,1],4)` | `r round(summary(naive_fit)$coefficients[1,2],4)` | [`r round(confint(naive_fit)[1,1],4)`, `r round(confint(naive_fit)[1,2],4)`]
+| manual | `r round(summary(naive_fit)$coefficients[2,1],4)` | `r round(summary(naive_fit)$coefficients[2,2],4)` | [`r round(confint(naive_fit)[2,1],4)`, `r round(confint(naive_fit)[2,2],4)`] |
+
+However, we reasonably expect that other factors play a role. For example, 
+`mpg` is also influenced by `cyl`, `hp`, `wt`, `qsec`, and not all
+of them are uncorrelated, as we can see in **Figure \@ref(fig:pairplot)**.
+
+## Model selection
+
+It may happen that the effect of transmission on miles per gallon is biased by 
+the fact that we are not considering other factors. Therefore we start nesting 
+models in order to see if adding regressors have a significant effect above and
+beyond the change in degrees of freedom. First we convert factor variables into
+factors:
+
+```{r asFactors}
+data <- mtcars %>% mutate(cyl = as.factor(cyl), vs = as.factor(vs), am = as.factor(am), 
+                          gear = as.factor(gear), carb = as.factor(carb))
+```
+
+Since it is clear that the weight of the car influences its miles per gallon, 
+we start adding `wt` to our model and then we ask whether adding another 
+variable has a significant effect, by relying on the ANOVA test.
+
+```{r firstNest}
+seek <- function(var, params = c()) {
+        formula <- reformulate(c(params, var), response = 'mpg'); fit_new <- lm(formula, data)
+        cat("p-value for adding", var, "is", anova(fit, fit_new)[2,6], "\n")}
+fit <- lm(mpg ~ am + wt, data)
+invisible(sapply(names(select(data, !c(mpg,am,wt))), seek, params = c('am','wt')))
+```
+
+Since we will perform 20 tests, to take into account the multiple 
+hypothesis testing issue and to control the false positive
+rate at level \(\alpha = 0.05\), we call significant the p-values below 
+\(0.05/20 = 0.0025\). It turns out that `hp` and `qsec` have a 
+significant effect. Since `qsec` is the one with weaker correlation with `wt` 
+(`r round(cor(mtcars$wt,mtcars$qsec),2)` vs 
+`r round(cor(mtcars$wt,mtcars$hp),2)` of `hp`), then we add `qsec` to our model 
+and we ask ourselves the same question.
+
+```{r secondNest, results = 'hide'}
+fit <- lm(mpg ~ am + wt + qsec, data)
+invisible(sapply(names(select(data, !c(mpg,am,wt,qsec))), seek, params = c('am','wt','qsec') ))
+```
+
+We conclude that no other variable has a significant effect, so we search for potential cross-effects:
+
+| ANOVA w.r.t. adding | `am:wt` | `am:qsec` | `wt:qsec` |
+| :---: | :---: | :---: | :---: |
+| p-value | `r anova(fit,lm(mpg ~ am + wt + qsec + am:wt, data))[2,6]` | `r anova(fit,lm(mpg ~ am + wt + qsec + am:qsec, data))[2,6]` | `r anova(fit,lm(mpg ~ am + wt + qsec + wt:qsec, data))[2,6]` |
+
+## Linear regression
+
+We can fit our linear model with `mpg` as output and `am`, `wt`, `am:wt`, `qsec` as regressors and view the inference results:
+
+```{r finalFit}
+fit <- lm(mpg ~ am*wt + qsec, data); summary(fit)
+```
+
+Therefore, holding constant `qsec` and `wt`, cars with manual
+transmissions get about 14 more miles per gallon:
+
+|  | estimate | std error | 95% conf int |
+| :---: | :---: | :---: | :---: |
+| manual | `r round(summary(fit)$coef[2,1],4)` | `r round(summary(fit)$coef[2,2],4)` | [`r round(confint(fit)[2,1],4)`, `r round(confint(fit)[2,2],4)`] |
+
+Moreover, we are satisfied because our model significantly explains about 90% of the variance (R-squared is `r round(summary(fit)$r.squared,4)`).
+
+We can check if regression assumptions are met, namely the normality assumption 
+for the residuals, with a Shapiro-Wilk test and diagnostic plotting (see **Figure 
+\@ref(fig:diagPlot)**):
+
+```{r Shapiro}
+shapiro.test(fit$residuals)
+```
+
+Normality assumptions don’t seem far off (approximately), and heteroskedasticity doesn’t seem to be an issue.
+
+## Conclusions
+
+Regression analysis using transmission type, weight, and quarter mile time as
+explanatory variables leads to the conclusion that manual cars get on average 
+`r round(summary(fit)$coef[2,1],2)` \(\pm\) `r round(summary(fit)$coef[2,2],2)`
+more mpg than automatic cars, holding the other effects constant.
+
+However, the number of observations is relatively small, whence it is difficult
+to draw trustful conclusions. **Figure \@ref(fig:scatterplot)** offers a glimpse of 
+the problem. It is advisable to obtain a new and larger data 
+set to challenge these results.
+
+\newpage
+
+# Appendices
+
+## Box plot mpg vs transmission
+
+```{r boxplot, echo = F, fig.align = "center", cache = T, fig.cap = "Box plot", ref.label = 'boxplot', out.height = "3in"}
+ggplot(data = mtcars, aes(x = as.factor(am), y = mpg)) + 
+        stat_boxplot(geom ='errorbar', width = 0.3) +
+        geom_boxplot(fill = 'navy', alpha = 0.5) + theme_bw() + 
+        geom_jitter(shape=16, position=position_jitter(0.05)) +
+        scale_x_discrete(labels=c("Automatic", "Manual")) +
+        labs(title = 'MPG per transmission', x = 'Transmission')
+```
+
+## Pair plot of mtcars
+
+```{r pairplot, echo = F, fig.align = "center", cache = T, ref.label = "pairplot", fig.cap = "Pair plot", out.height = "3in"}
+GGally::ggpairs(select(mtcars, !c(disp,drat,vs,gear,carb)))
+```
+
+\newpage
+
+## Diagnostic plotting for residuals
+
+```{r diagPlot, echo = F, fig.align = "center", cache = T, fig.cap = "Diagnostic plotting", out.height = "3in"}
+par(mfrow = c(1,2))
+plot(fit, which=c(1,2), asp=1)
+par(mfrow = c(1,1))
+```
+
+## Scatter plot of the effect of 1/4 mile time, transmission and weight on mpg
+
+```{r scatterplot, echo = F, fig.align = "center", cache = T, ref.label = "scatterplot", fig.cap = "4-dim scatterplot", out.height = "3in"}
+cutpoints <- quantile(data$wt, seq(0,1,length.out = 4))
+ggplot(data, aes(x = am, y = mpg, col = qsec)) + 
+        geom_point(size = 3) +
+        scale_color_gradientn(colours = rainbow(5)) +
+        scale_x_discrete(labels=c("Automatic", "Manual")) +
+        labs(title = 'Influence of transmission, 1/4 mile time and weight on miles per gallon', 
+             x = 'Transmission', 
+             col = '1/4 mile (sec)',
+             caption = 'Miles per gallon as explained by transmission (x), 1/4 mile time (color) and weight (facets)') +
+        facet_grid(.~cut(data$wt, 
+                         cutpoints, 
+                         include.lowest = T))
+```
