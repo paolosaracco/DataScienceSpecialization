@@ -1,0 +1,239 @@
+---
+title: "Predicting Correctness of Weight Lifting Exercises"
+author: "Paolo Saracco"
+date: "`r Sys.Date()`"
+output:
+        bookdown::html_document2:
+                fig_caption: true
+                toc: true
+                toc_depth: 2
+                toc_float: 
+                        collapsed: true
+                number_sections: false
+                keep_md: true
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+# Summary
+
+We analyze the Weight Lifting Exercises Dataset, which gathers data from accelerometers on the belt, forearm, arm, and dumbell of 6 people performing barbell lifts correctly and incorrectly in 5 different ways. After fitting a predictive model for activity recognition based on these data, we use it to predict the correctness of the exercises performed by new users.
+
+## Packages
+
+We will use the `dplyr` package for working with data frames, the `ggplot2`
+package for graphs, the `caret` package for training and predicting.
+
+```{r packages}
+library(dplyr); library(ggplot2); library(caret); set.seed(0)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from [webpage of the project](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+# Data
+
+The data set originally comes from the Weight Lifting Exercises Dataset (see the section on the Weight Lifting Exercise Dataset on the [webpage of the project](http://groupware.les.inf.puc-rio.br/har) - possibly see the web archive version of it at [web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)).
+The training data for this project are also available at: 
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are also available at:
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+```{r downloadData, echo = F, cache = T}
+
+if (!dir.exists("data")) {
+        dir.create("data")
+        print("Data created")
+}
+
+if (!file.exists("data/train.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+        download.file(url, destfile = "data/train.csv")
+        print("file downloaded")
+}
+
+if (!file.exists("data/test.csv")) {
+        url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+        download.file(url, destfile = "data/test.csv")
+        print("file downloaded")
+}
+```
+
+```{r readData, cache = T}
+raw_training <- read.csv("data/train.csv")
+raw_testing <- read.csv("data/test.csv")
+```
+
+## Exploratory data analysis
+
+We are dealing with a 
+`r paste(dim(raw_training)[1], "x", dim(raw_training)[2], sep = " ")` 
+training data set and a `r paste(dim(raw_testing)[1], "x", dim(raw_testing)[2], sep = " ")` test data set. Let us inspect the training data and leave aside the test data set.
+
+```{r datainspection, results='hide'}
+head(raw_training)
+tail(raw_training)
+str(raw_training)
+summary(raw_training)
+names(raw_training)
+```
+
+## Data preprocessing
+
+The first 7 columns contain data that are not useful for our purposes, hence we drop them. We also convert to numeric those columns that are erroneously interpreted as integers or characters. Then we drop those columns that are mostly (at least 90%) NAs. Finally, we check whether there are columns with almost zero variance, but there are not and we consider ourselves satisfied.
+
+```{r cleaningData, cache = T}
+training <- raw_training %>%
+        select(!c(X, user_name,
+                  raw_timestamp_part_1,
+                  raw_timestamp_part_2,
+                  cvtd_timestamp,
+                  new_window,
+                  num_window)) %>%
+        mutate(across(!classe, as.numeric), 
+               classe = factor(classe)) %>%
+        select(where(function(X) { mean(is.na(X)) < 0.9 }))
+nzv <- nearZeroVar(training)
+training <- select(training, !all_of(nzv))
+dim(training)
+```
+
+# Model selection
+
+In order to select a model, we compare the accuracy of three models seen in the course: **decision tree**, **random forest** and **gradient-boosting trees** model.
+
+We split our training data set into a data set for training the algorithms and a data set for validating the results and compare their accuracy.
+
+```{r dataPartition}
+inTrain <- createDataPartition(y = training$classe,
+                               p = 0.7,
+                               list = FALSE)
+trainSet <- training[inTrain,]
+validationSet <- training[-inTrain,]
+```
+
+We also decide to perform **3-fold cross validation** in the training phase, to reduce the bias and improve the prediction capability of our models.
+
+```{r control}
+control <- trainControl(method = "cv", number = 3)
+```
+
+## Decision tree
+
+We start by training a single decision tree.
+
+### Creating the model
+
+```{r trainTree, cache = T}
+Tree <- train(classe ~ ., data = trainSet,
+              method = "rpart", trControl = control)
+
+rattle::fancyRpartPlot(Tree$finalModel)
+```
+
+### Check performance on validation data
+
+```{r predictionTree}
+predTree <- predict(Tree, validationSet)
+CnfMtxTree <- confusionMatrix(predTree, validationSet$classe)
+CnfMtxTree
+```
+
+We conclude that this single decision tree has an accuracy of `r CnfMtxTree$overall["Accuracy"]`
+
+## Random forest
+
+As second option, we train a random forest.
+
+### Creating the model
+
+```{r trainRF, cache = T}
+Forest <- train(classe ~ ., data = trainSet,
+               method = "rf", trControl = control)
+```
+
+### Check performance on validation data
+
+```{r predictionRF}
+predRF <- predict(Forest, validationSet)
+CnfMtxRF <- confusionMatrix(predRF, validationSet$classe)
+CnfMtxRF
+```
+
+We conclude that this random forest model has an accuracy of `r CnfMtxRF$overall["Accuracy"]`
+
+## Gradient-boosted Trees Model
+
+Finally, we perform gradient boosting with decision trees as base learners.
+
+### Creating the model
+
+```{r trainGBM, cache = T}
+GradBoostTrees <- train(classe ~ ., data = trainSet, method = "gbm", 
+                        verbose = FALSE, trControl = control)
+```
+
+### Check performance on validation data
+
+```{r predictionGBM}
+predGBM <- predict(GradBoostTrees, validationSet)
+CnfMtxGBM <- confusionMatrix(predGBM, validationSet$classe)
+CnfMtxGBM
+```
+
+We conclude that this gradient-boosted trees model has an accuracy of `r CnfMtxGBM$overall["Accuracy"]`
+
+## Sum up
+
+```{r accErrs, echo = F}
+ISaccTree <- confusionMatrix(predict(Tree,trainSet), trainSet$classe)$overall["Accuracy"]
+OoSaccTree <- CnfMtxTree$overall["Accuracy"]
+ISaccRF <- confusionMatrix(predict(Forest,trainSet), trainSet$classe)$overall["Accuracy"]
+OoSaccRF <- CnfMtxRF$overall["Accuracy"]
+ISaccGBM <- confusionMatrix(predict(GradBoostTrees,trainSet), trainSet$classe)$overall["Accuracy"]
+OoSaccGBM <- CnfMtxGBM$overall["Accuracy"]
+```
+
+| Model | In sample accuracy | In sample error | Out of sample accuracy | Out of sample error |
+| :---: | :---: | :---: | :---: | :---: |
+| Decision Tree | `r round(ISaccTree,4)` | `r round(1-ISaccTree,4)` | `r round(OoSaccTree,4)` | `r round(1-OoSaccTree,4)` |
+| Random Forest | `r round(ISaccRF,4)` | `r round(1-ISaccRF,4)` | `r round(OoSaccRF,4)` | `r round(1-OoSaccRF,4)` |
+| Gradient-boosted Trees | `r round(ISaccGBM,4)` | `r round(1-ISaccGBM,4)` | `r round(OoSaccGBM,4)` | `r round(1-OoSaccGBM,4)` |
+
+Therefore we decide to select the random forest model, since it performed pretty well on the testing data having a `r round(OoSaccRF,4)*100`% out-of-sample accuracy rate.
+
+## Check variable importance
+
+Since we opted for the random forest model, we can extract the variable importance from it. This tells us how the variables helped the model in predicting the class of the data. Higher importance means that the variable is useful to the model.
+
+```{r varImp}
+var_imp <- varImp(Forest, scale = F)$importance
+var_imp <- data.frame(variables = row.names(var_imp), 
+                      importance = var_imp$Overall)
+ggplot(aes(x = reorder(variables, importance), y = importance),
+       data = var_imp) + geom_bar(stat = 'identity', fill = 'navy') + 
+        coord_flip() + labs(x = 'Variables', 
+                            y = 'Importance',
+                            title='Random forest variable importance') +
+        theme(axis.text = element_text(size = 7),
+              axis.title = element_text(size = 15),
+              plot.title = element_text(size = 20))
+```
+
+# Prediction on test set
+
+We may finally apply our model on testing data.
+
+```{r TestRF}
+testing <- raw_testing %>%
+        select(names(training[,-53]))
+dim(testing)
+TestRF <- predict(Forest, testing)
+TestRF
+```
