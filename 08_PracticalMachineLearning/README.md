@@ -1,3 +1,3 @@
-# Statistical Inference
+# Practical Machine Learning
 
-Material for the Regression Models course.
+Material for the Practical Machine Learning course.
