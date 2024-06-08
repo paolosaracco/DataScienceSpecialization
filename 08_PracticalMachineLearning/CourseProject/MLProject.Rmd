@@ -45,7 +45,7 @@ The test data are also available at:
 
 [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
 
-```{r downloadData, echo = F, cache = T}
+```{r downloadData, echo = F, cache = T, results='hide'}
 
 if (!dir.exists("data")) {
         dir.create("data")
