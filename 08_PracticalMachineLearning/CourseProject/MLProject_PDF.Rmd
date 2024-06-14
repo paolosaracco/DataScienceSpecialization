@@ -54,7 +54,9 @@ The test data are also available at:
 
 [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
 
-```{r downloadData, echo = F, cache = T, results='hide'}
+We downloaded the data into a `data` folder as `train.csv` and `test.csv`.
+
+```{r downloadData, echo = F, cache = T}
 
 if (!dir.exists("data")) {
         dir.create("data")
@@ -83,13 +85,15 @@ raw_testing <- read.csv("data/test.csv")
 
 We are dealing with a 
 `r paste(dim(raw_training)[1], "x", dim(raw_training)[2], sep = " ")` 
-training data set and a `r paste(dim(raw_testing)[1], "x", dim(raw_testing)[2], sep = " ")` test data set. Let us inspect the training data and leave aside the test data set.
+training data set and a `r paste(dim(raw_testing)[1], "x", dim(raw_testing)[2], sep = " ")` test data set. Let us inspect the training data and leave aside the test data set. Details are suppressed for the sake of brevity, but we explicitly show the names of the variables in the data set for the convenience of the reader.
 
-```{r datainspection, results='hide'}
+```{r datainspection, results = 'hide'}
 head(raw_training)
 tail(raw_training)
 str(raw_training)
 summary(raw_training)
+```
+```{r names}
 names(raw_training)
 ```
 
@@ -109,7 +113,8 @@ training <- raw_training %>%
                classe = factor(classe)) %>%
         select(where(function(X) { mean(is.na(X)) < 0.9 }))
 nzv <- nearZeroVar(training)
-training <- select(training, !all_of(nzv))
+nzv
+# training <- select(training, !all_of(nzv))
 dim(training)
 ```
 
@@ -117,7 +122,9 @@ dim(training)
 
 In order to select a model, we compare the accuracy of three models seen in the course: **decision tree**, **random forest** and **gradient-boosting trees** model.
 
-We split our training data set into a data set for training the algorithms and a data set for validating the results and compare their accuracy.
+## Holdout Cross Validation
+
+We split our training data set into a data set for training the algorithms (`70%` of the data) and a data set for validating the results and compare their accuracy (`30%` of the data).
 
 ```{r dataPartition}
 inTrain <- createDataPartition(y = training$classe,
@@ -133,20 +140,31 @@ We also decide to perform **3-fold cross validation** in the training phase, to 
 control <- trainControl(method = "cv", number = 3)
 ```
 
-## Decision tree
+### Decision tree
 
 We start by training a single decision tree.
 
-### Creating the model
+#### Creating the model
+
+Train the decision tree
 
 ```{r trainTree, cache = T}
 Tree <- train(classe ~ ., data = trainSet,
               method = "rpart", trControl = control)
-
 rattle::fancyRpartPlot(Tree$finalModel)
 ```
 
-### Check performance on validation data
+#### Estimation of the in sample accuracy/error
+
+Estimate accuracy on the training data
+
+```{r ISTree}
+confusionMatrix(predict(Tree, trainSet), trainSet$classe)$overall
+```
+
+#### Check performance on validation data
+
+Predict on the validation data set and check out-of-sample performance
 
 ```{r predictionTree}
 predTree <- predict(Tree, validationSet)
@@ -156,18 +174,30 @@ CnfMtxTree
 
 We conclude that this single decision tree has an accuracy of `r CnfMtxTree$overall["Accuracy"]`
 
-## Random forest
+### Random forest
 
 As second option, we train a random forest.
 
-### Creating the model
+#### Creating the model
+
+Train the random forest
 
 ```{r trainRF, cache = T}
 Forest <- train(classe ~ ., data = trainSet,
                method = "rf", trControl = control)
 ```
 
-### Check performance on validation data
+#### Estimation of the in sample accuracy/error
+
+Estimate accuracy on the training data
+
+```{r ISForest}
+confusionMatrix(predict(Forest, trainSet), trainSet$classe)$overall
+```
+
+#### Check performance on validation data
+
+Predict on the validation data set and check out-of-sample performance
 
 ```{r predictionRF}
 predRF <- predict(Forest, validationSet)
@@ -177,18 +207,30 @@ CnfMtxRF
 
 We conclude that this random forest model has an accuracy of `r CnfMtxRF$overall["Accuracy"]`
 
-## Gradient-boosted Trees Model
+### Gradient-boosted Trees Model
 
 Finally, we perform gradient boosting with decision trees as base learners.
 
-### Creating the model
+#### Creating the model
+
+Train the GBM
 
 ```{r trainGBM, cache = T}
 GradBoostTrees <- train(classe ~ ., data = trainSet, method = "gbm", 
                         verbose = FALSE, trControl = control)
 ```
 
-### Check performance on validation data
+#### Estimation of the in sample accuracy/error
+
+Estimate accuracy on the training data
+
+```{r ISBGM}
+confusionMatrix(predict(GradBoostTrees, trainSet), trainSet$classe)$overall
+```
+
+#### Check performance on validation data
+
+Predict on the validation data set and check out-of-sample performance
 
 ```{r predictionGBM}
 predGBM <- predict(GradBoostTrees, validationSet)
@@ -198,22 +240,28 @@ CnfMtxGBM
 
 We conclude that this gradient-boosted trees model has an accuracy of `r CnfMtxGBM$overall["Accuracy"]`
 
-## Sum up
+## Upsum and conclusion of the model selection process
 
 ```{r accErrs, echo = F}
 ISaccTree <- confusionMatrix(predict(Tree,trainSet), trainSet$classe)$overall["Accuracy"]
 OoSaccTree <- CnfMtxTree$overall["Accuracy"]
+CITreeLow <- CnfMtxTree$overall["AccuracyLower"]
+CITreeUp <- CnfMtxTree$overall["AccuracyUpper"]
 ISaccRF <- confusionMatrix(predict(Forest,trainSet), trainSet$classe)$overall["Accuracy"]
 OoSaccRF <- CnfMtxRF$overall["Accuracy"]
+CIRFLow <- CnfMtxRF$overall["AccuracyLower"]
+CIRFUp <- CnfMtxRF$overall["AccuracyUpper"]
 ISaccGBM <- confusionMatrix(predict(GradBoostTrees,trainSet), trainSet$classe)$overall["Accuracy"]
 OoSaccGBM <- CnfMtxGBM$overall["Accuracy"]
+CIGBMLow <- CnfMtxGBM$overall["AccuracyLower"]
+CIGBMUp <- CnfMtxGBM$overall["AccuracyUpper"]
 ```
 
-| Model | In sample accuracy | In sample error | Out of sample accuracy | Out of sample error |
-| :---: | :---: | :---: | :---: | :---: |
-| Decision Tree | `r round(ISaccTree,4)` | `r round(1-ISaccTree,4)` | `r round(OoSaccTree,4)` | `r round(1-OoSaccTree,4)` |
-| Random Forest | `r round(ISaccRF,4)` | `r round(1-ISaccRF,4)` | `r round(OoSaccRF,4)` | `r round(1-OoSaccRF,4)` |
-| Gradient-boosted Trees | `r round(ISaccGBM,4)` | `r round(1-ISaccGBM,4)` | `r round(OoSaccGBM,4)` | `r round(1-OoSaccGBM,4)` |
+| Model | In sample accuracy | In sample error | Out of sample accuracy | Out of sample error | 95% CI OS Acc |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| Decision Tree | `r round(ISaccTree,4)` | `r round(1-ISaccTree,4)` | `r round(OoSaccTree,4)` | `r round(1-OoSaccTree,4)` | [`r round(CITreeLow,4)`,`r round(CITreeUp,4)`]
+| Random Forest | `r round(ISaccRF,4)` | `r round(1-ISaccRF,4)` | `r round(OoSaccRF,4)` | `r round(1-OoSaccRF,4)` | [`r round(CIRFLow,4)`,`r round(CIRFUp,4)`]
+| Gradient-boosted Trees | `r round(ISaccGBM,4)` | `r round(1-ISaccGBM,4)` | `r round(OoSaccGBM,4)` | `r round(1-OoSaccGBM,4)` | [`r round(CIGBMLow,4)`,`r round(CIGBMUp,4)`]
 
 Therefore we decide to select the random forest model, since it performed pretty well on the testing data having a `r round(OoSaccRF,4)*100`% out-of-sample accuracy rate.
 
